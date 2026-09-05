@@ -1,193 +1,136 @@
-# Advanced Expense Tracker
+# Do Synthetic Training Data Preserve Adverse Action Reasons?
 
-A comprehensive Python application for tracking expenses with real-time currency conversion, taxation management, and detailed reporting with graphs.
+Local explanation fidelity in credit scoring models trained on generated data.
 
-## Features
-
-### 1. **Expense Input**
-- Amount entry (0 to 500,000)
-- Transaction date tracking
-- Category selection (Food, Transport, Utilities, Entertainment, Shopping, Healthcare, Education, Other)
-- Multi-currency support with real-time conversion
-
-### 2. **Currency Conversion**
-- Real-time exchange rates via API
-- Support for 9 major currencies: USD, EUR, GBP, JPY, CAD, AUD, CHF, INR, CNY
-- Live rate display before adding expenses
-
-### 3. **Taxation Management**
-- Income Tax (percentage-based)
-- Council Tax (monthly amount)
-- Car Tax (annual amount)
-
-### 4. **Reporting & Analytics**
-- Excel report generation with multiple sheets:
-  - **Expense Report**: Detailed transaction list
-  - **Monthly Summary**: Expenses grouped by month and category
-  - **Category Summary**: Total expenses per category with bar chart
-  - **Monthly Trend**: Line chart showing expense trends over time
-  - **Taxation**: Tax information summary
-
-### 5. **Data Visualization**
-- Bar charts for category-wise expenses
-- Line charts for monthly expense trends
-- Automated graph generation in Excel reports
-
-## Installation
-
-### Prerequisites
-- Python 3.7 or higher
-- pip package manager
-
-### Required Libraries
-
-Install all dependencies using:
-
-```bash
-pip install openpyxl requests
-```
-
-Or install individually:
-
-```bash
-pip install openpyxl      # For Excel file creation
-pip install requests       # For API calls (currency conversion)
-```
-
-**Note**: `tkinter` is included with standard Python installations on most systems.
-
-## Usage
-
-### Running the Application
-
-1. Open terminal/command prompt
-2. Navigate to the directory containing `expense_tracker.py`
-3. Run the application:
-
-```bash
-python expense_tracker.py
-```
-
-### Adding an Expense
-
-1. Enter the **Amount** (0-500,000)
-2. Set the **Transaction Date** (format: DD/MM/YYYY)
-3. Select a **Category** from the dropdown
-4. Choose **Currency From** (the currency of your expense)
-5. Choose **Currency To** (your base currency for tracking)
-6. Click **Get Exchange Rate** to see the current conversion rate
-7. Click **Add Expense** to save the transaction
-
-### Setting Taxation
-
-1. Enter **Income Tax** percentage (e.g., 20 for 20%)
-2. Enter **Council Tax** monthly amount in pounds
-3. Enter **Car Tax** annual amount in pounds
-
-These values are saved in the Excel report when generated.
-
-### Viewing Expenses
-
-Click **View Expenses** to see all recorded transactions in a table format.
-
-### Generating Reports
-
-1. Click **Generate Report** to create an Excel file
-2. The report includes:
-   - All transaction details
-   - Monthly summaries with category breakdowns
-   - Category totals with bar chart
-   - Monthly trend analysis with line chart
-   - Taxation information
-
-Reports are saved as `expense_report_YYYYMMDD_HHMMSS.xlsx`
-
-### Clearing Data
-
-Click **Clear All** to remove all stored expenses (confirmation required).
-
-## Data Storage
-
-- Expenses are stored in `expenses_data.json` in the same directory
-- Data persists between sessions
-- Backup this file to preserve your expense history
-
-## API Information
-
-The application uses the **ExchangeRate-API** (free tier) for real-time currency conversion:
-- API: `https://api.exchangerate-api.com/v4/latest/`
-- No API key required for basic usage
-- Rate limit: Suitable for personal use
-
-## Supported Currencies
-
-- USD - US Dollar
-- EUR - Euro
-- GBP - British Pound
-- JPY - Japanese Yen
-- CAD - Canadian Dollar
-- AUD - Australian Dollar
-- CHF - Swiss Franc
-- INR - Indian Rupee
-- CNY - Chinese Yuan
-
-## File Structure
-
-```
-expense_tracker.py      # Main application
-expenses_data.json      # Data storage (created automatically)
-expense_report_*.xlsx   # Generated reports
-README.md              # This file
-```
-
-## Troubleshooting
-
-### "tkinter not found" error
-- **Windows**: tkinter comes pre-installed with Python
-- **macOS**: Usually included, or install via: `brew install python-tk`
-- **Linux**: Install via: `sudo apt-get install python3-tk`
-
-### "requests module not found"
-```bash
-pip install requests
-```
-
-### "openpyxl module not found"
-```bash
-pip install openpyxl
-```
-
-### Exchange rate not loading
-- Check your internet connection
-- The API service may be temporarily unavailable
-- You can still add expenses without fetching rates
-
-### Invalid date format
-Use DD/MM/YYYY format (e.g., 27/03/2026)
-
-## Future Enhancements
-
-Potential features for future versions:
-- Budget limits and alerts
-- Recurring expenses
-- Multiple user accounts
-- Database integration
-- Mobile app version
-- Custom category creation
-- Expense editing and deletion
-- Advanced filtering and search
-- PDF report generation
-- Import/export from CSV
-
-## License
-
-Free to use and modify for personal and commercial purposes.
-
-## Support
-
-For issues or questions, review the code comments or modify the application to suit your needs.
+MSc Financial Technology dissertation project (MSO4992), Middlesex University London.
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: March 2026
+## What this project asks
+
+Lenders are legally required to tell rejected applicants **why** they were rejected. Because real customer data is restricted by privacy law, synthetic data is increasingly used to train credit scoring models instead.
+
+Synthetic data is normally validated by checking that a model trained on it still **predicts** accurately. Nobody had checked whether the model still gives the same **reasons** - and specifically, whether a given individual receives the same reasons.
+
+> When a credit scoring model is trained on synthetic data rather than real data, do individual applicants receive the same principal reasons for the decision made about them?
+
+## What it found
+
+Accuracy survives. Individual explanations do not.
+
+| Comparison | Mean top-3 Jaccard | Mean Kendall tau | Identical top-3 |
+|---|---|---|---|
+| Real vs Real (noise floor) | 0.7368 | 0.5924 | **50.40%** |
+| Real vs TVAE | 0.3011 | 0.1805 | **2.17%** |
+| Real vs CTGAN | 0.1724 | 0.0892 | **0.68%** |
+
+Retraining on a resampled subset of the *same real data* leaves 50.4% of applicants with an identical top-three reason set. Retraining on CTGAN-generated data leaves 0.68% - despite a ROC-AUC difference of under five points.
+
+A control experiment ruled out class balance distortion as the cause: correcting both synthetic sets to the real 22.12% default rate produced no recovery in agreement.
+
+## Repository structure
+
+    .
+    ├── fetch_data.py                 # retrieve the UCI dataset
+    ├── stage1_baseline.py            # real-data baseline, frozen test split
+    ├── stage2_synthetic.py           # CTGAN + TVAE generation, TSTR evaluation
+    ├── stage3_explanations.py        # noise baseline + per-applicant SHAP agreement
+    ├── stage4_balance_control.py     # class-balance control experiment
+    ├── requirements.txt
+    ├── outputs/                      # results written by each stage
+    └── data/                         # source dataset (not tracked, see below)
+
+## Dataset
+
+Yeh, I. (2009) *Default of Credit Card Clients*. UCI Machine Learning Repository.
+https://doi.org/10.24432/C55S3H - CC BY 4.0.
+
+30,000 records, 23 features, 22.12% default rate.
+
+The raw file is not tracked in this repository. Retrieve it with:
+
+```bash
+curl -L -o data/creditcard.zip "https://archive.ics.uci.edu/static/public/350/default+of+credit+card+clients.zip"
+unzip -o data/creditcard.zip -d data/
+mv "data/default of credit card clients.xls" data/default_of_credit_card_clients.xls
+```
+
+**Note:** the programmatic `ucimlrepo` interface returned a read error for dataset 350 during this study. The static archive above was used instead.
+
+## Reproducing the study
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+On macOS, set these before running any stage that loads both SDV and XGBoost - without them the process segfaults on a duplicate OpenMP runtime:
+
+```bash
+export KMP_DUPLICATE_LIB_OK=TRUE
+export OMP_NUM_THREADS=1
+```
+
+Then run the stages in order. Each consumes artefacts written by its predecessor.
+
+```bash
+python stage1_baseline.py          # < 1 min
+python stage2_synthetic.py         # ~20 min at 300 epochs
+python stage3_explanations.py      # 3-5 min
+python stage4_balance_control.py   # 3-5 min
+```
+
+## Method in brief
+
+**Stage 1.** Clean the data, split 80/20 stratified, train XGBoost on the real training set. The 20% test partition is written to disk and never re-split - every later comparison uses the same 6,000 real applicants. Baseline ROC-AUC 0.7768, within the published range for this dataset.
+
+**Stage 2.** Fit CTGAN and TVAE on the training partition only (never the test set), sample 24,000 synthetic records from each, train identical models, evaluate all three on the frozen real test set. Categorical columns were declared explicitly in the SDV metadata so that codes are not treated as continuous.
+
+**Stage 3.** Compute SHAP values via TreeExplainer for each model over the test set. For every applicant, extract the top three features by absolute contribution and measure agreement between the real-trained and synthetic-trained models. Crucially, a **noise baseline** is built first: five models trained on resampled real data, compared against the reference, to quantify how much explanations move for reasons unrelated to synthetic data. Without it the main comparison is uninterpretable (Chen et al., 2024).
+
+**Stage 4.** Undersample each synthetic set to the real 22.12% default rate and repeat the comparison, isolating "synthetic" from "wrong class balance".
+
+## Results summary
+
+Predictive utility, all evaluated on the same 6,000 real applicants:
+
+| Trained on | ROC-AUC | PR-AUC | Default rate in training data |
+|---|---|---|---|
+| Real | 0.7768 | 0.5566 | 22.12% |
+| CTGAN | 0.7292 | 0.4880 | 38.58% |
+| TVAE | 0.7566 | 0.4836 | 13.45% |
+
+Both generators distorted the class balance substantially, in opposite directions, and neither distortion is visible in the utility metrics.
+
+Control experiment:
+
+| Generator | Condition | Records | Default rate | Mean Jaccard |
+|---|---|---|---|---|
+| CTGAN | original | 24,000 | 38.58% | 0.1724 |
+| CTGAN | rebalanced | 18,929 | 22.12% | 0.1574 |
+| TVAE | original | 24,000 | 13.45% | 0.3011 |
+| TVAE | rebalanced | 14,588 | 22.12% | 0.2987 |
+
+Agreement did not recover. Class balance is ruled out as the driver.
+
+## Limitations
+
+- The **mechanism** is unidentified. Class balance was eliminated; what property of synthetic data actually causes the divergence was not established.
+- **One dataset**, one country, one credit product. Generalisation is untested, particularly to low-default portfolios such as mortgages.
+- **Single runs, unseeded generators.** The SDV synthesizer constructors were not given a fixed random seed, so runs are not reproducible. An earlier run produced a materially different TVAE result under identical configuration. Reported figures are point estimates without confidence intervals.
+- The **control reduced training set size** while correcting class balance, so a second variable changed. TVAE lost 39.2% of its rows and agreement moved by 0.0024, which argues against sample size being influential, but this is indirect evidence.
+- One model family, one explanation method, one value of k.
+- Agreement is measured against a real-data reference, not against ground truth.
+
+## Key references
+
+- Chen, Y., Calabrese, R. and Martin-Barragan, B. (2024) 'Interpretable machine learning for imbalanced credit scoring datasets', *European Journal of Operational Research*, 312(1), pp. 357-372.
+- Xu, L., Skoularidou, M., Cuesta-Infante, A. and Veeramachaneni, K. (2019) 'Modeling tabular data using conditional GAN', *NeurIPS* 32, pp. 7335-7345.
+- Yu, J., Ishikura, T., Usukura, S., Shigoku, R. and Hayashi, K. (2025) 'SHAP Distance: an explainability-aware metric for evaluating the semantic fidelity of synthetic tabular data', arXiv:2511.17590.
+- Lundberg, S. M. and Lee, S.-I. (2017) 'A unified approach to interpreting model predictions', *NeurIPS* 30, pp. 4765-4774.
+
+## Author
+
+Gauravkumar Raiyani - MSc Financial Technology, Middlesex University London.
+Supervisor: Ann-Ngoc Nguyen.
