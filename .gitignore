@@ -1,0 +1,27 @@
+# virtual environment
+.venv/
+venv/
+env/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# raw dataset - not redistributed, see README for retrieval
+data/
+
+# large generated artefacts - reproducible by re-running the stages
+outputs/stage1/train_real.csv
+outputs/stage1/test_real.csv
+outputs/stage2/train_ctgan.csv
+outputs/stage2/train_tvae.csv
+outputs/stage4/train_ctgan_balanced.csv
+outputs/stage4/train_tvae_balanced.csv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
