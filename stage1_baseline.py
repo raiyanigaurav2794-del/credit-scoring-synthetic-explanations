@@ -1,10 +1,11 @@
-# paths and settings kept at the top so I only change them in one place. 
-# Seed fixed so the run is repeatable.
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, average_precision_score
 from xgboost import XGBClassifier
 import os
+
+# paths and settings kept at the top so I only change them in one place. 
+# Seed fixed so the run is repeatable.
 
 DATA_PATH = "data/default_of_credit_card_clients.xls"
 OUT_DIR = "outputs/stage1"
