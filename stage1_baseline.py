@@ -1,236 +1,104 @@
-"""
-Stage 1 - real-data baseline.
-
-This is the TRTR run (train real, test real). Everything later in the project
-gets compared back to what comes out of here, so this is the file that has to
-be right.
-
-Two things this script has to get correct or nothing downstream works:
-  1. The test set is carved out here and NEVER changes again. Every model I
-     train later (synthetic, resampled, whatever) gets scored on this exact
-     same set of real applicants. If the test set moves, the comparison is
-     meaningless.
-  2. Seeds are fixed and written down, because Chen et al. (2024) show
-     explanations wobble just from resampling. I need to be able to
-     reproduce a run exactly before I can claim anything about synthetic data.
-
-Dataset: UCI "Default of Credit Card Clients" - 30,000 rows, 22.12% default.
-Paper 4 (Japinye & Adedugbe 2025) used the same one, so I can sanity check my
-AUC against a published number instead of guessing whether it's reasonable.
-"""
-
-from pathlib import Path
-
-import numpy as np
+# paths and settings kept at the top so I only change them in one place. 
+# Seed fixed so the run is repeatable.
 import pandas as pd
-from sklearn.metrics import average_precision_score, roc_auc_score
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_auc_score, average_precision_score
 from xgboost import XGBClassifier
+import os
 
-# ----------------------------------------------------------------------
-# config - everything I might want to change lives here, not buried below
-# ----------------------------------------------------------------------
-
-DATA_PATH = Path("data/default_of_credit_card_clients.xls")  
-OUT_DIR = Path("outputs/stage1")
+DATA_PATH = "data/default_of_credit_card_clients.xls"
+OUT_DIR = "outputs/stage1"
 SEED = 42
-TEST_FRAC = 0.20
 
-TARGET = "default"
-
-
-# ----------------------------------------------------------------------
-# load
-# ----------------------------------------------------------------------
-
-def load_raw(path: Path) -> pd.DataFrame:
-    """
-    The UCI file is an .xls with a junk first row - the real column names are
-    on row 2, hence header=1. If you've already converted it to CSV this
-    handles that too.
-    """
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Can't find {path}. Download 'default of credit card clients.xls' "
-            "from the UCI repository and put it in a data/ folder next to this script."
-        )
-
-    if path.suffix.lower() in {".xls", ".xlsx"}:
-        df = pd.read_excel(path, header=1)
-    else:
-        df = pd.read_csv(path)
-
-    return df
+os.makedirs(OUT_DIR, exist_ok=True)
 
 
-# ----------------------------------------------------------------------
-# clean
-# ----------------------------------------------------------------------
+# skip the junk first row in the UCI file, real column names are on row 2.
 
-def clean(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Known problems with this dataset - all documented in the literature, and
-    I need to say in the methodology chapter that I handled them:
-
-      - target column has an awkward name with spaces
-      - the first repayment column is PAY_0, not PAY_1 (inconsistent naming)
-      - EDUCATION has values 0, 5, 6 that aren't in the codebook
-      - MARRIAGE has a 0 that isn't in the codebook
-      - ID is a row number, not a feature. Leaving it in would let the model
-        cheat and would also pollute the SHAP values, which is the whole point
-        of the project, so it goes.
-    """
-    df = df.copy()
-
-    df = df.rename(columns={
-        "default payment next month": TARGET,
-        "default.payment.next.month": TARGET,
-        "PAY_0": "PAY_1",
-    })
-
-    if "ID" in df.columns:
-        df = df.drop(columns=["ID"])
-
-    # collapse the undocumented categories into the existing "other" bucket
-    # rather than dropping the rows - dropping would lose ~1.5% of the data
-    # for no good reason
-    df["EDUCATION"] = df["EDUCATION"].replace({0: 4, 5: 4, 6: 4})
-    df["MARRIAGE"] = df["MARRIAGE"].replace({0: 3})
-
-    return df
+if DATA_PATH.endswith(".xls") or DATA_PATH.endswith(".xlsx"):
+    df = pd.read_excel(DATA_PATH, header=1)
+else:
+    df = pd.read_csv(DATA_PATH)
 
 
-def sanity_check(df: pd.DataFrame) -> None:
-    """
-    If these don't match the published figures I've loaded the wrong file or
-    mangled it. Better to crash here than to find out in chapter 5.
-    """
-    n_rows = len(df)
-    default_rate = df[TARGET].mean()
+# shorten the target name and fix the inconsistent PAY_0 label.
 
-    print(f"rows loaded          : {n_rows:,}")
-    print(f"default rate         : {default_rate:.4%}  (expected ~22.12%)")
-    print(f"missing values       : {df.isna().sum().sum()}")
-    print(f"features (excl. y)   : {df.shape[1] - 1}")
+df = df.rename(columns={
+    "default payment next month": "default",
+    "default.payment.next.month": "default",
+    "PAY_0": "PAY_1",
+})
+# ID is a row number, not real information.
+# Removing it also keeps it out of the SHAP values, which is what this project measures.
+if "ID" in df.columns:
+    df = df.drop(columns=["ID"])
+# these codes aren't in the codebook. 
+# Folded them into "other" rather than deleting the rows.
+df["EDUCATION"] = df["EDUCATION"].replace({0: 4, 5: 4, 6: 4})
+df["MARRIAGE"] = df["MARRIAGE"].replace({0: 3})
 
-    if n_rows != 30_000:
-        print(f"  WARNING: expected 30,000 rows, got {n_rows:,}")
-    if not 0.21 < default_rate < 0.23:
-        print(f"  WARNING: default rate {default_rate:.4%} is off - check the file")
-
-
-# ----------------------------------------------------------------------
-# split - this is the important bit
-# ----------------------------------------------------------------------
-
-def make_split(df: pd.DataFrame):
-    """
-    Stratified so the 22% default rate is preserved in both halves. If I let
-    this drift, the test set stops being comparable and Chen et al.'s point
-    about imbalance affecting explanations starts contaminating my results.
-
-    The test indices get written to disk. Stage 2 loads them rather than
-    re-splitting, so there is physically no way for the test set to change
-    between experiments.
-    """
-    X = df.drop(columns=[TARGET])
-    y = df[TARGET]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=TEST_FRAC,
-        stratify=y,
-        random_state=SEED,
-    )
-
-    print(f"\ntrain: {len(X_train):,} rows, {y_train.mean():.4%} default")
-    print(f"test : {len(X_test):,} rows, {y_test.mean():.4%} default")
-
-    return X_train, X_test, y_train, y_test
+print("rows:", len(df))
+print("default rate:", round(df["default"].mean() * 100, 2), "%")
+print("missing values:", df.isna().sum().sum())
+print("features:", df.shape[1] - 1)
 
 
-# ----------------------------------------------------------------------
-# model
-# ----------------------------------------------------------------------
+# 80/20 split. Stratified so both halves keep the real 22% default rate.
+# Fixed seed so it's always the same 6,000 people in the test set.
 
-def train_model(X_train, y_train) -> XGBClassifier:
-    """
-    Deliberately NOT using scale_pos_weight or any resampling here.
+X = df.drop(columns=["default"])
+y = df["default"]
 
-    Reason: Chen et al. (2024) showed that how you handle imbalance changes
-    the explanations, not just the accuracy. Since my whole project is about
-    whether explanations survive a change in training data, I need to hold
-    imbalance handling constant and untouched. The 22% imbalance stays as-is
-    for every model in the study. I'll say this explicitly in the methodology.
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=SEED
+)
 
-    Hyperparameters are conservative on purpose - I'm not chasing a leaderboard
-    score, I need a competent, stable, believable baseline.
-    """
-    model = XGBClassifier(
-        n_estimators=400,
-        max_depth=4,
-        learning_rate=0.05,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_lambda=1.0,
-        eval_metric="logloss",
-        random_state=SEED,
-        n_jobs=-1,
-    )
-    model.fit(X_train, y_train)
-    return model
+print("train:", len(X_train), "rows")
+print("test:", len(X_test), "rows")
 
 
-def evaluate(model, X_test, y_test) -> dict:
-    """
-    AUC because that's what everyone reports and I need to compare to Paper 4.
-    PR-AUC because with a 22% positive rate, AUC alone flatters the model -
-    and PR-AUC is the one that actually reflects performance on defaulters,
-    who are the people my whole research question is about.
-    """
-    proba = model.predict_proba(X_test)[:, 1]
+# kept the settings conservative.
+# No imbalance handling on purpose — that would change the explanations, which is what I'm measuring.
 
-    results = {
-        "roc_auc": roc_auc_score(y_test, proba),
-        "pr_auc": average_precision_score(y_test, proba),
-        "baseline_pr_auc": y_test.mean(),  # what random guessing would get
-    }
+model = XGBClassifier(
+    n_estimators=400,
+    max_depth=4,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_lambda=1.0,
+    eval_metric="logloss",
+    random_state=SEED,
+)
 
-    print("\n--- real-data baseline (TRTR) ---")
-    print(f"ROC-AUC : {results['roc_auc']:.4f}")
-    print(f"PR-AUC  : {results['pr_auc']:.4f}  (random would be {results['baseline_pr_auc']:.4f})")
-    print("\nPublished work on this dataset lands roughly in the 0.77-0.79 ROC-AUC")
-    print("range. If I'm miles off that, something is wrong with my pipeline.")
-
-    return results
+model.fit(X_train, y_train)
 
 
-# ----------------------------------------------------------------------
+# ROC-AUC to compare against published results on this dataset. 
+# PR-AUC because it reflects performance on defaulters, who are the people this project is about.
 
-def main():
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+proba = model.predict_proba(X_test)[:, 1]
 
-    df = clean(load_raw(DATA_PATH))
-    sanity_check(df)
+roc = roc_auc_score(y_test, proba)
+pr = average_precision_score(y_test, proba)
 
-    X_train, X_test, y_train, y_test = make_split(df)
-
-    model = train_model(X_train, y_train)
-    results = evaluate(model, X_test, y_test)
-
-    # freeze the test set so stage 2 can't accidentally use a different one
-    pd.Series(X_test.index, name="test_index").to_csv(
-        OUT_DIR / "test_indices.csv", index=False
-    )
-    X_test.assign(**{TARGET: y_test}).to_csv(OUT_DIR / "test_real.csv", index=False)
-    X_train.assign(**{TARGET: y_train}).to_csv(OUT_DIR / "train_real.csv", index=False)
-
-    model.save_model(OUT_DIR / "model_real.json")
-    pd.DataFrame([results]).to_csv(OUT_DIR / "baseline_metrics.csv", index=False)
-
-    print(f"\nsaved everything to {OUT_DIR}/")
-    print("train_real.csv is what goes into CTGAN in stage 2.")
+print()
+print("ROC-AUC:", round(roc, 4))
+print("PR-AUC:", round(pr, 4))
+print("random PR-AUC would be:", round(y_test.mean(), 4))
 
 
-if __name__ == "__main__":
-    main()          
+# train_real.csv feeds the generators in stage 2. 
+# test_real.csv is the fixed test set every later stage loads instead of re-splitting.
+
+X_train.assign(default=y_train).to_csv(OUT_DIR + "/train_real.csv", index=False)
+X_test.assign(default=y_test).to_csv(OUT_DIR + "/test_real.csv", index=False)
+
+model.save_model(OUT_DIR + "/model_real.json")
+
+pd.DataFrame([{"roc_auc": roc, "pr_auc": pr}]).to_csv(
+    OUT_DIR + "/baseline_metrics.csv", index=False
+)
+
+print()
+print("saved to", OUT_DIR)
