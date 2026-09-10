@@ -19,7 +19,8 @@ CATEGORICAL = ["SEX", "EDUCATION", "MARRIAGE",
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
-# ---- load the splits from stage 1 ----
+# load the split from stage 1 rather than splitting again, so the test set can't change.
+# Generators only ever see the training half.
 
 train_real = pd.read_csv(IN_DIR + "/train_real.csv")
 test_real = pd.read_csv(IN_DIR + "/test_real.csv")
@@ -31,7 +32,8 @@ print("train:", train_real.shape)
 print("test:", test_real.shape)
 
 
-# ---- tell SDV which columns are categories ----
+# SDV reads these code columns as numbers by default.
+# Overriding them stops the generator producing values like EDUCATION = 2.37.
 
 meta = Metadata.detect_from_dataframe(data=train_real, table_name="credit")
 
@@ -41,7 +43,8 @@ for col in CATEGORICAL:
 meta.validate()
 
 
-# ---- one function to train and score a model ----
+# same model settings for all three so the only thing changing is the training data. 
+# Reorder columns to match the test set — XGBoost goes by position, not name.
 
 def train_and_score(name, train_df):
     X = train_df.drop(columns=["default"])
@@ -70,12 +73,13 @@ def train_and_score(name, train_df):
     }
 
 
-# ---- real baseline first ----
+# Retrains on real data so all three rows in the results table come from the same code path.
 
 results = [train_and_score("Real", train_real)]
 
 
-# ---- then each generator ----
+# two generators built on different principles, so a finding isn't just a quirk of one method. 
+# Sample the same number of rows as the real set so training size stays constant.
 
 for name, synth_class in [("CTGAN", CTGANSynthesizer), ("TVAE", TVAESynthesizer)]:
     print()
@@ -92,7 +96,6 @@ for name, synth_class in [("CTGAN", CTGANSynthesizer), ("TVAE", TVAESynthesizer)
     print("real default rate:", round(train_real["default"].mean() * 100, 2), "%")
 
     results.append(train_and_score(name, synthetic))
-
 
 # ---- results table ----
 
