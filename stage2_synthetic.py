@@ -83,13 +83,19 @@ results = [train_and_score("Real", train_real)]
 
 for name, synth_class in [("CTGAN", CTGANSynthesizer), ("TVAE", TVAESynthesizer)]:
     print()
-    print("fitting", name, "for", EPOCHS, "epochs")
+    path = OUT_DIR + "/train_" + name.lower() + ".csv"
 
-    synth = synth_class(meta, epochs=EPOCHS, verbose=True)
-    synth.fit(train_real)
-
-    synthetic = synth.sample(num_rows=len(train_real))
-    synthetic.to_csv(OUT_DIR + "/train_" + name.lower() + ".csv", index=False)
+    # the generators aren't seeded, so a fresh run gives different data.
+    # If a saved set exists, reuse it so the reported results can be reproduced.
+    if os.path.exists(path):
+        print("using saved", name, "data from", path)
+        synthetic = pd.read_csv(path)
+    else:
+        print("fitting", name, "for", EPOCHS, "epochs")
+        synth = synth_class(meta, epochs=EPOCHS, verbose=True)
+        synth.fit(train_real)
+        synthetic = synth.sample(num_rows=len(train_real))
+        synthetic.to_csv(path, index=False)
 
     print(name, "rows:", len(synthetic))
     print(name, "default rate:", round(synthetic["default"].mean() * 100, 2), "%")

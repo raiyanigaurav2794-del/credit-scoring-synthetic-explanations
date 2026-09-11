@@ -12,11 +12,10 @@ __pycache__/
 # raw dataset - not redistributed, see README for retrieval
 data/
 
-# large generated artefacts - reproducible by re-running the stages
+# generated artefacts that are reproducible by re-running the stages
+# (synthetic training sets are committed because the generators are unseeded)
 outputs/stage1/train_real.csv
 outputs/stage1/test_real.csv
-outputs/stage2/train_ctgan.csv
-outputs/stage2/train_tvae.csv
 outputs/stage4/train_ctgan_balanced.csv
 outputs/stage4/train_tvae_balanced.csv
 

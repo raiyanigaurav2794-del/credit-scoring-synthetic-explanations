@@ -16,17 +16,19 @@ Synthetic data is normally validated by checking that a model trained on it stil
 
 ## What it found
 
-Accuracy survives. Individual explanations do not.
+Accuracy largely survives. Individual explanations do not.
 
 | Comparison | Mean top-3 Jaccard | Mean Kendall tau | Identical top-3 |
 |---|---|---|---|
 | Real vs Real (noise floor) | 0.7368 | 0.5924 | **50.40%** |
-| Real vs TVAE | 0.3011 | 0.1805 | **2.17%** |
-| Real vs CTGAN | 0.1724 | 0.0892 | **0.68%** |
+| Real vs TVAE | 0.3394 | 0.1634 | **3.67%** |
+| Real vs CTGAN | 0.1696 | 0.0826 | **2.63%** |
 
-Retraining on a resampled subset of the *same real data* leaves 50.4% of applicants with an identical top-three reason set. Retraining on CTGAN-generated data leaves 0.68% - despite a ROC-AUC difference of under five points.
+Retraining on a resampled subset of the *same real data* leaves 50.4% of applicants with an identical top-three reason set. Retraining on TVAE-generated data leaves 3.67% - despite a ROC-AUC drop of only about three points.
 
 A control experiment ruled out class balance distortion as the cause: correcting both synthetic sets to the real 22.12% default rate produced no recovery in agreement.
+
+An earlier run of both generators, whose synthetic data was not kept, showed the same pattern (see Limitations).
 
 ## Repository structure
 
@@ -76,10 +78,12 @@ Then run the stages in order. Each consumes artefacts written by its predecessor
 
 ```bash
 python stage1_baseline.py          # < 1 min
-python stage2_synthetic.py         # ~20 min at 300 epochs
+python stage2_synthetic.py         # ~1 min with the saved synthetic data, ~20 min to generate new data
 python stage3_explanations.py      # 3-5 min
 python stage4_balance_control.py   # 3-5 min
 ```
+
+**Note on the synthetic data.** The synthetic training sets behind the reported results are included in `outputs/stage2/`. Because the generators are unseeded, new synthetic data would differ, so `stage2_synthetic.py` reuses the saved files when they exist and only generates new data if they are missing. Running all four stages in order reproduces every reported figure exactly.
 
 ## Method in brief
 
@@ -98,8 +102,8 @@ Predictive utility, all evaluated on the same 6,000 real applicants:
 | Trained on | ROC-AUC | PR-AUC | Default rate in training data |
 |---|---|---|---|
 | Real | 0.7768 | 0.5566 | 22.12% |
-| CTGAN | 0.7292 | 0.4880 | 38.58% |
-| TVAE | 0.7566 | 0.4836 | 13.45% |
+| CTGAN | 0.6933 | 0.4729 | 45.29% |
+| TVAE | 0.7443 | 0.4914 | 11.60% |
 
 Both generators distorted the class balance substantially, in opposite directions, and neither distortion is visible in the utility metrics.
 
@@ -107,10 +111,10 @@ Control experiment:
 
 | Generator | Condition | Records | Default rate | Mean Jaccard |
 |---|---|---|---|---|
-| CTGAN | original | 24,000 | 38.58% | 0.1724 |
-| CTGAN | rebalanced | 18,929 | 22.12% | 0.1574 |
-| TVAE | original | 24,000 | 13.45% | 0.3011 |
-| TVAE | rebalanced | 14,588 | 22.12% | 0.2987 |
+| CTGAN | original | 24,000 | 45.29% | 0.1696 |
+| CTGAN | rebalanced | 16,861 | 22.12% | 0.1793 |
+| TVAE | original | 24,000 | 11.60% | 0.3394 |
+| TVAE | rebalanced | 12,581 | 22.12% | 0.3297 |
 
 Agreement did not recover. Class balance is ruled out as the driver.
 
@@ -118,8 +122,8 @@ Agreement did not recover. Class balance is ruled out as the driver.
 
 - The **mechanism** is unidentified. Class balance was eliminated; what property of synthetic data actually causes the divergence was not established.
 - **One dataset**, one country, one credit product. Generalisation is untested, particularly to low-default portfolios such as mortgages.
-- **Single runs, unseeded generators.** The SDV synthesizer constructors were not given a fixed random seed, so runs are not reproducible. An earlier run produced a materially different TVAE result under identical configuration. Reported figures are point estimates without confidence intervals.
-- The **control reduced training set size** while correcting class balance, so a second variable changed. TVAE lost 39.2% of its rows and agreement moved by 0.0024, which argues against sample size being influential, but this is indirect evidence.
+- **Unseeded generators, two runs.** The SDV synthesizers were not given a fixed random seed. The reported results come from the second run, whose synthetic data is committed in `outputs/stage2/`, so every reported figure can be reproduced exactly. An earlier run, whose synthetic data was not kept, gave different individual figures (mean Jaccard 0.1724 for CTGAN and 0.3011 for TVAE; identical top-3 0.68% and 2.17%) but the same overall pattern. Two runs are not enough for confidence intervals.
+- The **control reduced training set size** while correcting class balance, so a second variable changed. TVAE lost 47.6% of its rows and agreement moved by 0.0097, which argues against sample size being influential, but this is indirect evidence.
 - One model family, one explanation method, one value of k.
 - Agreement is measured against a real-data reference, not against ground truth.
 
