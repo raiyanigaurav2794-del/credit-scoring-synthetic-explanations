@@ -10,7 +10,7 @@ MSc Financial Technology dissertation project (MSO4992), Middlesex University Lo
 
 Lenders are legally required to tell rejected applicants **why** they were rejected. Because real customer data is restricted by privacy law, synthetic data is increasingly used to train credit scoring models instead.
 
-Synthetic data is normally validated by checking that a model trained on it still **predicts** accurately. Nobody had checked whether the model still gives the same **reasons** - and specifically, whether a given individual receives the same reasons.
+Synthetic data is normally validated by checking that a model trained on it still **predicts** accurately. No study identified in this review had checked whether the model still gives the same **reasons** - and specifically, whether a given individual receives the same reasons.
 
 > When a credit scoring model is trained on synthetic data rather than real data, do individual applicants receive the same principal reasons for the decision made about them?
 
@@ -32,8 +32,7 @@ An earlier run of both generators, whose synthetic data was not kept, showed the
 
 ## Repository structure
 
-    .
-    ├── fetch_data.py                 # retrieve the UCI dataset
+
     ├── stage1_baseline.py            # real-data baseline, frozen test split
     ├── stage2_synthetic.py           # CTGAN + TVAE generation, TSTR evaluation
     ├── stage3_explanations.py        # noise baseline + per-applicant SHAP agreement
@@ -116,11 +115,11 @@ Control experiment:
 | TVAE | original | 24,000 | 11.60% | 0.3394 |
 | TVAE | rebalanced | 12,581 | 22.12% | 0.3297 |
 
-Agreement did not recover. Class balance is ruled out as the driver.
+Agreement did not recover. Class balance is ruled out as the main driver.
 
 ## Limitations
 
-- The **mechanism** is unidentified. Class balance was eliminated; what property of synthetic data actually causes the divergence was not established.
+- - The **mechanism** is unidentified. Class balance was ruled out as the main cause; what property of synthetic data actually causes the divergence was not established.
 - **One dataset**, one country, one credit product. Generalisation is untested, particularly to low-default portfolios such as mortgages.
 - **Unseeded generators, two runs.** The SDV synthesizers were not given a fixed random seed. The reported results come from the second run, whose synthetic data is committed in `outputs/stage2/`, so every reported figure can be reproduced exactly. An earlier run, whose synthetic data was not kept, gave different individual figures (mean Jaccard 0.1724 for CTGAN and 0.3011 for TVAE; identical top-3 0.68% and 2.17%) but the same overall pattern. Two runs are not enough for confidence intervals.
 - The **control reduced training set size** while correcting class balance, so a second variable changed. TVAE lost 47.6% of its rows and agreement moved by 0.0097, which argues against sample size being influential, but this is indirect evidence.
@@ -129,10 +128,10 @@ Agreement did not recover. Class balance is ruled out as the driver.
 
 ## Key references
 
-- Chen, Y., Calabrese, R. and Martin-Barragan, B. (2024) 'Interpretable machine learning for imbalanced credit scoring datasets', *European Journal of Operational Research*, 312(1), pp. 357-372.
-- Xu, L., Skoularidou, M., Cuesta-Infante, A. and Veeramachaneni, K. (2019) 'Modeling tabular data using conditional GAN', *NeurIPS* 32, pp. 7335-7345.
-- Yu, J., Ishikura, T., Usukura, S., Shigoku, R. and Hayashi, K. (2025) 'SHAP Distance: an explainability-aware metric for evaluating the semantic fidelity of synthetic tabular data', arXiv:2511.17590.
-- Lundberg, S. M. and Lee, S.-I. (2017) 'A unified approach to interpreting model predictions', *NeurIPS* 30, pp. 4765-4774.
+Chen, Y., Calabrese, R. and Martin-Barragan, B. (2024) 'Interpretable machine learning for imbalanced credit scoring datasets', European Journal of Operational Research, 312(1), pp. 357-372.
+Xu, L., Skoularidou, M., Cuesta-Infante, A. and Veeramachaneni, K. (2019) 'Modeling tabular data using conditional GAN', NeurIPS 32, pp. 7335-7345.
+- Yu, K., Ishikura, S., Usukura, Y., Shigoku, Y. and Hayashi, T. (2025) 'SHAP Distance: an explainability-aware metric for evaluating the semantic fidelity of synthetic tabular data', arXiv:2511.17590.
+Lundberg, S. M. and Lee, S.-I. (2017) 'A unified approach to interpreting model predictions', NeurIPS 30, pp. 4765-4774.
 
 ## Author
 
