@@ -119,7 +119,7 @@ Agreement did not recover. Class balance is ruled out as the main driver.
 
 ## Limitations
 
-- - The **mechanism** is unidentified. Class balance was ruled out as the main cause; what property of synthetic data actually causes the divergence was not established.
+- The **mechanism** is unidentified. Class balance was ruled out as the main cause; what property of synthetic data actually causes the divergence was not established.
 - **One dataset**, one country, one credit product. Generalisation is untested, particularly to low-default portfolios such as mortgages.
 - **Unseeded generators, two runs.** The SDV synthesizers were not given a fixed random seed. The reported results come from the second run, whose synthetic data is committed in `outputs/stage2/`, so every reported figure can be reproduced exactly. An earlier run, whose synthetic data was not kept, gave different individual figures (mean Jaccard 0.1724 for CTGAN and 0.3011 for TVAE; identical top-3 0.68% and 2.17%) but the same overall pattern. Two runs are not enough for confidence intervals.
 - The **control reduced training set size** while correcting class balance, so a second variable changed. TVAE lost 47.6% of its rows and agreement moved by 0.0097, which argues against sample size being influential, but this is indirect evidence.
