@@ -1,0 +1,7 @@
+model,rejection_rate,n_rejected_by_both,mean_jaccard,pct_identical_topk,pct_different_topk
+CTGAN,10.0%,424,0.413,6.37,93.63
+CTGAN,22.12%,900,0.4267,8.56,91.44
+CTGAN,30.0%,1135,0.402,7.4,92.6
+TVAE,10.0%,392,0.4673,10.2,89.8
+TVAE,22.12%,1075,0.4511,11.35,88.65
+TVAE,30.0%,1421,0.4421,11.19,88.81

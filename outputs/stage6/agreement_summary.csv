@@ -1,0 +1,4 @@
+source,runs,jaccard_mean,jaccard_sd,jaccard_min,jaccard_max,identical_mean,different_if_rejected_mean
+CTGAN,5,0.1821,0.0638,0.148,0.2955,1.348,93.95
+Noise baseline,5,0.6887,0.0248,0.6586,0.7158,43.636,
+TVAE,5,0.335,0.0289,0.2993,0.3687,5.078,85.408

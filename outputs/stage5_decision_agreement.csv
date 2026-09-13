@@ -1,0 +1,7 @@
+model,rejection_rate,n_rejected,overlap_jaccard,pct_also_rejected
+CTGAN,10.0%,600,0.5464,70.67
+CTGAN,22.12%,1327,0.5131,67.82
+CTGAN,30.0%,1800,0.4604,63.06
+TVAE,10.0%,600,0.4851,65.33
+TVAE,22.12%,1327,0.6808,81.01
+TVAE,30.0%,1800,0.6521,78.94

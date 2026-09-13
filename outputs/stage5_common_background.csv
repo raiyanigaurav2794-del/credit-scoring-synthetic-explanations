@@ -1,0 +1,4 @@
+comparison,mean_jaccard,mean_tau,pct_identical_topk,n
+Real vs Real (noise baseline),0.6887,0.5838,43.64,30000
+Real vs CTGAN,0.1681,0.0572,1.47,6000
+Real vs TVAE,0.3783,0.236,7.03,6000

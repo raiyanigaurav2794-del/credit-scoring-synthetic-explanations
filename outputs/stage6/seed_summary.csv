@@ -1,0 +1,3 @@
+generator,runs,default_rate_mean,roc_auc_mean,roc_auc_sd,roc_auc_min,roc_auc_max
+CTGAN,5,0.3298,0.7103,0.0189,0.6884,0.7331
+TVAE,5,0.1464,0.7471,0.0083,0.7364,0.756

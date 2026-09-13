@@ -1,0 +1,16 @@
+source,run,mean_jaccard,pct_identical,pct_different_if_rejected
+Noise baseline,1,0.7086,46.48,
+Noise baseline,2,0.7158,47.9,
+Noise baseline,3,0.6684,40.18,
+Noise baseline,4,0.6586,39.5,
+Noise baseline,5,0.692,44.12,
+CTGAN,101,0.148,0.67,96.46
+CTGAN,202,0.1651,0.87,95.12
+CTGAN,303,0.1493,1.13,93.55
+CTGAN,404,0.2955,3.35,87.0
+CTGAN,505,0.1524,0.72,97.62
+TVAE,101,0.3401,5.53,80.84
+TVAE,202,0.3123,4.28,88.38
+TVAE,303,0.3547,6.55,85.03
+TVAE,404,0.3687,6.68,79.39
+TVAE,505,0.2993,2.35,93.4
