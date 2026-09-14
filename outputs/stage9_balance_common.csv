@@ -1,0 +1,5 @@
+generator,version,n_train,default_rate,mean_jaccard,pct_identical_topk
+CTGAN,original,24000,0.4529,0.1681,1.47
+CTGAN,balanced,16861,0.2212,0.1455,1.28
+TVAE,original,24000,0.116,0.3783,7.03
+TVAE,balanced,12581,0.2212,0.3714,6.8
